@@ -4,15 +4,18 @@ import gmsh
 import math
 import os
 
+wave_vec = np.ones(shape=(1, 3), dtype=np.double) * 2
+omega = 0.5
 
 # Класс расчётной сетки
 class CalcMesh:
 
     # Конструктор сетки, полученной из stl-файла
     def __init__(self, nodes_coords, tetrs_points):
+        self.time = 0
         self.nodes = np.array([nodes_coords[0::3], nodes_coords[1::3], nodes_coords[2::3]])
 
-        self.smth = np.power(np.power(self.nodes[0, :], 2) + np.power(self.nodes[1, :], 2), 0.5)
+        self.smth = np.sin(- wave_vec @ self.nodes)
 
         self.velocity = np.zeros(shape=(3, int(len(nodes_coords) / 3)), dtype=np.double)
         self.velocity[2] = np.ones(int(len(nodes_coords) / 3), dtype=np.double) * (-1.5)
@@ -26,8 +29,10 @@ class CalcMesh:
     # Метод отвечает за выполнение для всей сетки шага по времени величиной tau и за изменение скорости
     def move(self, tau):
         self.nodes += self.velocity * tau
+        self.time += tau
         self.velocity[0] = self.nodes[1] * 1
         self.velocity[1] = -self.nodes[0] * 1
+        self.smth = np.sin(omega * self.time - wave_vec @ self.nodes)
 
     # Метод отвечает за запись текущего состояния сетки в снапшот в формате VTK
     def snapshot(self, snap_number):
@@ -50,7 +55,7 @@ class CalcMesh:
             # Вставляем новую точку в сетку VTK-снапшота
             points.InsertNextPoint(self.nodes[0, i], self.nodes[1, i], self.nodes[2, i])
             # Добавляем значение скалярного поля в этой точке
-            smth.InsertNextValue(self.smth[i])
+            smth.InsertNextValue(self.smth[0][i])
             # Добавляем значение векторного поля в этой точке
             vel.InsertNextTuple((self.velocity[0, i], self.velocity[1, i], self.velocity[2, i]))
 
